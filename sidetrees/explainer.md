@@ -41,6 +41,8 @@ The following is a simplified pseudo code example of a Sidetree Asset's JSON tex
 
 System diagram showing op sig links that form a Sidetree Asset Trail:
 
+> NOTE: This graphic is out-of-date, and does not match the description of the explainer. TODO: Update graphic.
+
 ![Sidetree Asset Trail diagram](https://i.imgur.com/RbwM1nj.png)
 
 ### Creation of a Sidetree Asset
