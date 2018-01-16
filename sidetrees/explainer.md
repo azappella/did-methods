@@ -22,19 +22,19 @@ The following is a simplified pseudo code example of a Sidetree Asset's JSON tex
   {
     sig: OWNER_SIG_DELTA_0, // Initial creation of DID
     delta: { RFC_6902_JSON_PATCH },
-    recovery: RECOVERY_DATA
+    recovery: RECOVERY_JSON_DESCRIPTORS
   },
   {
     sig: OWNER_SIG_DELTA_1, // Previous update of DID
     proof: PROOF_OF_DELTA_0,
     delta: { RFC_6902_JSON_PATCH },
-    recovery: RECOVERY_DATA
+    recovery: RECOVERY_JSON_DESCRIPTORS
   },
   {
     sig: OWNER_SIG_DELTA_2, // Latest update of DID
     proof: PROOF_OF_DELTA_1,
     delta: { RFC_6902_JSON_PATCH },
-    recovery: RECOVERY_DATA
+    recovery: RECOVERY_JSON_DESCRIPTORS
   }
   
 ]
@@ -62,7 +62,7 @@ Creation of an Asset is accomplished via the following set of procedures:
   {
     sig: OWNER_SIG_DELTA_0, // Initial creation of DID
     delta: { RFC_6902_JSON_PATCH },
-    recovery: RECOVERY_PROOF
+    recovery: RECOVERY_JSON_DESCRIPTORS
   }
 ]
 ```
@@ -146,34 +146,35 @@ Assets are processed by protocol-enforcing compute nodes that observes the chain
 
 > **NOTE: the following section must be modified to reflect other updates**
 
-In order to update an Asset's state with that of an incoming update, various values and objects must be examined and assembled to validate and merge incoming operations. These objects include the constructed DID Document and `recovery` array.
+In order to update an Asset's state with that of an incoming Asset entry, various values and objects must be examined or assembled to validate and merge incoming operations. The following the a series of steps to perform to correctly process, merge, and cache the state of an Asset:
 
-##### If processing from the 0 index (initial Asset registration operation) of the Asset object:
+##### If processing from 0 index (the initial Asset registration operation) of the Asset object:
 
-Create and hold two objects in memory:
+**1**. Create and hold an object in memory that will be retained to store the current state of the Asset.
 
-- An object for the DID Document, to which deltas will be applied
-- An array that will be used to hold active recovery objects (recovery objects that have not been 'spent' in a recovery operation)
+**2**. Store the Asset ID in the cache object. The Asset ID is a combination of the Asset's genesis operation Merkle Root and the hash of the Asset object itself, as described in the [Asset ID](#asset-id) section.
 
-**8**. Use the `delta` present to create the initial state of the DID Document. If the delta is not present, abort and discard as an invalid DID.
+**2**. Use the `delta` value of the Asset to create the initial state of the DID Document via the procedure described in [RFC 6902](http://tools.ietf.org/html/rfc6902). Store the compiled DID Document in the cache object. If the delta is not present, abort the process and discard as an invalid DID.
 
-**9**. Verify that the `sig` value is a signature from one of the keys in the DID Document.
+**3**. Verify that the `sig` value is a signature from one of the keys in the compiled DID Document.
 
-**10**. If the `recovery` property is present, add all valid recovery objects to the array being held in memory.
+**4**. If the `recovery` field is present in the Asset, store any recovery descriptor objects it contains as an array in the cache object.
+
+**5**. Store the source of the Asset in the cache object.
 
 ##### If processing any operation beyond index 0:
 
-**8**. Use the delta present to create the initial state of the DID Document
+**1**. Validate that the object's proof field is present, and its value is a proof that links to the last operation's transaction root.
 
-**8**. Assuming you are not evaluating entry 0 (initial creation), ensure a s
+**2**. If the field `recover` is present on the Asset, the operation is initiating a recovery of the Asset. Process the value of the `recover` field in accordance with the recovery process defined by the matching `recovery` descriptor. If the recovery attempt is validated against the matching recovery descriptor, proceed. If there is no matching descriptor, or the recovery attempt is found to be invalid, abort, discard the entry, and revert state to last known good.
 
-**9**. Before processing the delta operations in the `delta` object, ensure the  Asset is signed with a key that is present in the DID Document's current state.
+**3**. If no recovery was attempted, validate the Asset operation `sig` with one of the keys present in the DID Document compiled from the Asset's current state. If a recovery was performed, skip step this and proceed.
 
-> NOTE: If processing the first entry, create a new object to represent the constructed DID Document object and hold it in memory.
+**4**. Use the `delta` present to update the compiled DID Document object being held in cache.
 
-**9**. If no signature is present on the current entry, check the recovery 
+**5**. If the `recovery` field is present in the Asset, store any recovery descriptor objects it contains as an array in the cache object.
 
-For each item, commit changes to the accrued DID Document object in accordance with the object construction rules described in RFC 6902 JSON Patch.
+**6**. Store the source of the new Asset source in the cache object.
 
 ## Implementation Pseudo Code
 
@@ -231,7 +232,6 @@ async function processTransaction(txn){
       }
       return await setAssetState(id, {
         id: id,
-        root: rootHash,
         src: asset,
         doc: mergeDiff({}, genesis.delta),      
         recovery: genesis.recovery || []
