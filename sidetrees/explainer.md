@@ -154,13 +154,13 @@ In order to update an Asset's state with that of an incoming Asset entry, variou
 
 **2**. Store the Asset ID in the cache object. The Asset ID is a combination of the Asset's genesis operation Merkle Root and the hash of the Asset object itself, as described in the [Asset ID](#asset-id) section.
 
-**2**. Use the `delta` value of the Asset to create the initial state of the DID Document via the procedure described in [RFC 6902](http://tools.ietf.org/html/rfc6902). Store the compiled DID Document in the cache object. If the delta is not present, abort the process and discard as an invalid DID.
+**3**. Use the `delta` value of the Asset to create the initial state of the DID Document via the procedure described in [RFC 6902](http://tools.ietf.org/html/rfc6902). Store the compiled DID Document in the cache object. If the delta is not present, abort the process and discard as an invalid DID.
 
-**3**. Verify that the `sig` value is a signature from one of the keys in the compiled DID Document.
+**4**. Verify that the `sig` value is a signature from one of the keys in the compiled DID Document.
 
-**4**. If the `recovery` field is present in the Asset, store any recovery descriptor objects it contains as an array in the cache object.
+**5**. If the `recovery` field is present in the Asset, store any recovery descriptor objects it contains as an array in the cache object.
 
-**5**. Store the source of the Asset in the cache object.
+**6**. Store the source of the Asset in the cache object.
 
 ##### If processing any operation beyond index 0:
 
