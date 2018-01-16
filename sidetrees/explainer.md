@@ -55,7 +55,7 @@ Creation of an Asset is accomplished via the following set of procedures:
 3. Hash the Sidetree Asset object and embed it in a Merkle Tree with other Sidetree Asset operations.
 4. Create a transaction on the blockchain with the Merkle root embedded within it and mark the transaction to indicate it contains a Sidetree.
 5. Store the Merkle tree source and all Asset objects in the decentralized storage system.
-6. OPTIONAL: You may choose to include a `recovery` property in the DID Document, the value of which is a hash of a recovery secret.
+6. OPTIONAL: You may choose to include a `recovery` property in the DID Document, the value of which is an array of recovery descriptor objects.
 
 ```javascript
 [
