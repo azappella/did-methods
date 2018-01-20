@@ -261,5 +261,31 @@ async function processTransaction(txn){
   }
 ```
 
+# Open Questions
 
+As an early WIP, this protocol may require further additions and modifications as it is developed and implemented. This is the list of topics, ideas, and discussions that have been considered, but not yet included in the proposed spec.
+
+## DDoS Mitigation
+
+Given the protocol was designed to enable unique asset rooting and DPKI operations to be performed at 'unfair' volumes with unit costs that are 'unfairly' cheap, the single most credible issue for the system would be DDoS vectors.
+
+What does DDoS mean in this context? Because asset IDs and subsequent operations in the system are represented via embedded tree structures where the trees can be arbitrarily large, it is possible for protocol adherent nodes to create and broadcast transactions to the underlying blockchain that embed massive sidetrees composed of leaves that are not intended for any other purpose than to force other observing nodes to process their asset operations in accordance with the protocol.
+
+The critical questions are: can observing nodes 'outrun' bad actors who may seek to clog the system with transactions bearing spurious sidetrees meant to degraded system-wide performance? Can an attacker generate spurious trees of asset ops faster than observing nodes can fetch those tree/leaf/source data and process the operations? Without actually running a simulation yet, it's important to consider what mitigations can be put in place to assure that, assuming an issue exists, it can be overcome.
+
+At a certain point, the attacker would be required to overwhelm the underlying chain itself, which has its own in-built organic price-defense, but it's possible that the Layer 2 nodes can be overcome before that begins to impact the attacker.
+
+### Mitigation Ideas
+
+##### Max Tree Depth
+
+A very basic idea is to simply limit the depth of a protocol-adherent sidetree. The protocol could specify that sidetrees that exceed a maximum depth are discarded, which would limit the ability of all participants to drop massive trees on the system. At its core, this mitigation strategy forces the attacker to deal with the organic economic pressure exerted by the underlying chain's transactional unit cost.
+
+> NOTE: large block expansion of the underlying chain generally creates a Tragedy of the Commons spam condition on the chain itself, which negatively impacts this entire class of DDoS protection for all L2 systems. Large block expansion may exclude networks from being a viable substrate for sidetree assets, if this mitigation strategy was selected for use.
+
+##### Leaf-level Proof-of-Work
+
+Add a requirement to the protocol that each leaf be required to show a specified or algorithmically computed level of proof-of-work for nodes to recognize the leaf as a valid submission.
+
+By requiring the leaf hash submitted in a sidetree to being with N level of leading 0s, it may be possible to degrade the ability of bad actors to effectively spam the system with useless sidetrees with massive numbers of ops. The user-level outcome would be that someone using the system to do an update of their human identity's DID would hash the update object with an included nonce on their local device until it satisfied the requisite work requirement, then have it included in a sidetree. Nodes would discard any leaves that did not meet the require work level.
 
