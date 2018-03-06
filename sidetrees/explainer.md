@@ -283,9 +283,9 @@ A very basic idea is to simply limit the depth of a protocol-adherent sidetree. 
 
 > NOTE: large block expansion of the underlying chain generally creates a Tragedy of the Commons spam condition on the chain itself, which negatively impacts this entire class of DDoS protection for all L2 systems. Large block expansion may exclude networks from being a viable substrate for sidetree assets, if this mitigation strategy was selected for use.
 
-##### Leaf-level Proof-of-Work
+##### Root-level Proof-of-Work
 
-Add a requirement to the protocol that each leaf be required to show a specified or algorithmically computed level of proof-of-work for nodes to recognize the leaf as a valid submission.
+Add a requirement to the protocol that each transaction's Merkle Root be required to show a specified or algorithmically computed level of proof-of-work for nodes to recognize the Sidetree as a valid submission.
 
-By requiring the leaf hash submitted in a sidetree to being with N level of leading 0s, it may be possible to degrade the ability of bad actors to effectively spam the system with useless sidetrees with massive numbers of ops. The user-level outcome would be that someone using the system to do an update of their human identity's DID would hash the update object with an included nonce on their local device until it satisfied the requisite work requirement, then have it included in a sidetree. Nodes would discard any leaves that did not meet the require work level.
+By requiring the root hash submitted for a Sidetree transaction have N level of leading 0s, it may be possible to degrade the ability of bad actors to effectively spam the system with useless Sidetrees that contain a massive numbers of ops. The user-level outcome would be that someone using the system to do an update of their human identity's DID would hash the update object with an included nonce on their local device until it satisfied the requisite work requirement, then have it included in a Sidetree. Nodes would discard any Sidetrees that do not meet the require work level.
 
