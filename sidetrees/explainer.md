@@ -42,8 +42,6 @@ The following is a simplified pseudo code example of a Sidetree Entity's JSON te
 
 System diagram showing op sig links that form a Sidetree Entity Trail:
 
-> NOTE: This graphic is out-of-date, and does not match the description of the explainer. TODO: Update graphic.
-
 ![Sidetree Entity Trail diagram](https://i.imgur.com/3PR6qUg.png)
 
 ### Creation of a Sidetree Entity
@@ -72,7 +70,7 @@ Creation of an Entity is accomplished via the following set of procedures:
 
 ### Entity ID
 
-Each Sidetree Entity has an emergent ID, which is composed of the the following combination of values: `MERKLE_ROOT` + `ASCII_Hyphen` + `SIDETREE_ENTITY_HASH`
+Each Sidetree Entity has an emergent ID, which is composed of the the following combination of values: `MERKLE_ROOT` + `ASCII_HYPHEN` + `SIDETREE_ENTITY_HASH`
   - Example: `did:xcid:1xms56ng0646faf3f43fa33f4faw4ds3-3bv3232k23937m7ds3133f4faw4f43f`
 
 
@@ -99,7 +97,7 @@ Entities are processed by protocol-enforcing compute nodes that observes the cha
 
 **3**. For each transaction, inspect the property known to bear the marking of a Sidetree Entity. If the transaction is marked as a Sidetree Entity, continue, if unmarked, move to the next transaction.
 
-**4**. Locate the Sidetree Merkle Root and hash of the compressed Merkle Leaf source data within the transaction.
+**4**. Locate the Merkle Root and hash of the compressed Merkle Leaf file within the transaction.
 
 #### Processing the Sidetree
 
