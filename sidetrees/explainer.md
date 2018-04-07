@@ -44,7 +44,7 @@ System diagram showing op sig links that form a Sidetree Entity Trail:
 
 > NOTE: This graphic is out-of-date, and does not match the description of the explainer. TODO: Update graphic.
 
-![Sidetree Entity Trail diagram](https://i.imgur.com/RbwM1nj.png)
+![Sidetree Entity Trail diagram](https://i.imgur.com/3PR6qUg.png)
 
 ### Creation of a Sidetree Entity
 
@@ -54,7 +54,7 @@ Creation of an Entity is accomplished via the following set of procedures:
 2. Add a `sig` property to the object that is the signature of the initial delta, generated with the owning keys specified in the delta.
 3. Hash the Sidetree Entity object and embed it in a Merkle Tree with other Sidetree Entity operations.
 4. Create a transaction on the blockchain with the Merkle root embedded within it and mark the transaction to indicate it contains a Sidetree.
-5. Store the Merkle tree source and all Entity objects in the decentralized storage system.
+5. Store the source for the leaves of the Merkle Tree source in the selected decentralized storage system.
 6. OPTIONAL: You may choose to include a `recovery` property in the DID Document, the value of which is an array of recovery descriptor objects.
 
 ```javascript
@@ -72,7 +72,7 @@ Creation of an Entity is accomplished via the following set of procedures:
 
 ### Entity ID
 
-Each Sidetree Entity has an emergent ID, which is composed of the the following combination of values: `MERKLE_ROOT` + `Unicode EN DASH (U+2013)` + `SIDETREE_ENTITY_HASH`
+Each Sidetree Entity has an emergent ID, which is composed of the the following combination of values: `MERKLE_ROOT` + `ASCII_Hyphen` + `SIDETREE_ENTITY_HASH`
   - Example: `did:xcid:1xms56ng0646faf3f43fa33f4faw4ds3-3bv3232k23937m7ds3133f4faw4f43f`
 
 
@@ -99,25 +99,23 @@ Entities are processed by protocol-enforcing compute nodes that observes the cha
 
 **3**. For each transaction, inspect the property known to bear the marking of a Sidetree Entity. If the transaction is marked as a Sidetree Entity, continue, if unmarked, move to the next transaction.
 
-**4**. Locate the Sidetree Entity's Merkle Root within the transaction.
+**4**. Locate the Sidetree Merkle Root and hash of the compressed Merkle Leaf source data within the transaction.
 
 #### Processing the Sidetree
 
-**5**. Fetch the Sidetree's Merkle Tree from the decentralized storage system.
+**5**. Fetch the compressed Merkle Leaf source data from the decentralized storage system.
 
-**6**. Fetch each of the Merkle Tree's leaf objects from the decentralized storage system. If a leaf object is not found in the decentralized storage system, skip and proceed with the next leaf.
+**6**. When the compressed Merkle Leaf source data is inflated to a state that allows for evaluation, begin processing the leaves in index order.
 
 #### Evaluating a Leaf
 
-*__If the entity contains just one operation:__*
+*__If the leaf's Entity object contains just one operation:__*
 
 **7**. The object shall be treated as a new Entity registration.
 
 **8**. Ensure that the entry is signed with the owner's specified key material. If valid, proceed, if invalid, discard the leaf and proceed to the next.
 
 **9**. Generate a state object using the procedural rules in the "Processing Entity Operations" section below, and store the resulting state in cache.
-
-**10**. Pin the Entity leaf for retention in the decentralized storage medium.
 
 *__If the Entity contains multiple operations:__*
 
@@ -142,9 +140,7 @@ Entities are processed by protocol-enforcing compute nodes that observes the cha
 
     Attempt to update the current Entity state from the the first new operation of the incoming Entity entry. If all new update operations are valid and processed without error or violation of protocol rules, save the resulting Entity state to cache, if the fork evaluation fails, discard the leaf and proceed to the next.
 
-#### Processing Entity Updates
-
-> **NOTE: the following section must be modified to reflect other updates**
+#### Processing Entity Operations
 
 In order to update an Entity's state with that of an incoming Entity entry, various values and objects must be examined or assembled to validate and merge incoming operations. The following the a series of steps to perform to correctly process, merge, and cache the state of an Entity:
 
@@ -168,7 +164,7 @@ In order to update an Entity's state with that of an incoming Entity entry, vari
 
 **2**. If the field `recover` is present on the Entity, the operation is initiating a recovery of the Entity. Process the value of the `recover` field in accordance with the recovery process defined by the matching `recovery` descriptor. If the recovery attempt is validated against the matching recovery descriptor, proceed. If there is no matching descriptor, or the recovery attempt is found to be invalid, abort, discard the entry, and revert state to last known good.
 
-**3**. If no recovery was attempted, validate the Entity operation `sig` with one of the keys present in the DID Document compiled from the Entity's current state. If a recovery was performed, skip step this and proceed.
+**3**. If no recovery was attempted, validate the Entity operation `sig` with one of the keys present in the DID Document compiled from the Entity's current state. If a recovery was performed, skip this step and proceed.
 
 **4**. Use the `delta` present to update the compiled DID Document object being held in cache.
 
@@ -182,83 +178,86 @@ In order to update an Entity's state with that of an incoming Entity entry, vari
 function getRootHash(txn){
   // Inspect txn, and if it is a Sidetree-bearing Entity, process the tree 
 }
-async function getTreeData(rootHash) {
+async function getLeafFileHash(txn) {
   // Fetch tree source data from decentralized storage, return array of leaves.
   // If not found warn: "Processing Warning: tree not found"
 };
-async function getLeafData(leafHash) {
+async function getLeafData(leafFileHash) {
   // Fetch and return Entity source data from decentralized storage.
   // If not found warn: "Processing Warning: Entity not found"
 };
 async function getEntityState(id){ ... };
 async function validateOpSig(op) { ... };
-async function validateOpProof(index, entity) { ... };
+async function validateOpProof(entity) { ... };
 async function validateFork(state, update, forkIndex) { ... }
 async function updateState(state, update, startIndex) { ... }
 function mergeDiff(doc, diff) { ... };
 function generateOpHash(op){ ... }
 
 
-async function processTransaction(txn){
+function processTransaction(txn){
   var rootHash = getRootHash(txn);
-  if (rootHash) {
-    var leaves = await getTreeData(rootHash);
-    leaves.forEach(async (leafHash) => {
-      await processLeaf(rootHash, leafHash);
+  var leafFileHash = getLeafFileHash(txn);
+  if (rootHash && leafFileHash) {
+    var leaves = await getLeafData(leafFileHash);
+    if (leaves) {
+      for (let leafHash in leaves) {
+        processLeaf(leaves[leafHash], leafHash, rootHash);
+      }
+    }
+  }
+}
+
+function processLeaf(entity, leafHash, rootHash) {
+  if (!entity || !Array.isArray(entity) || !entity.length) {
+    throw new Error('Protocol Violation: entity is malformed');
+  }
+  if (entity.length === 1) {
+    return await processGenesisOp(entity, leafHash, rootHash);
+  }
+  else {
+    return await processUpdate(entity, leafHash, rootHash);
+  }
+}
+
+async function processGenesisOp(entity, leafHash, rootHash){
+  var id = rootHash + '-' + leafHash;
+  var state = await getEntityState(id);
+  if (state === null) {
+    var genesis = entity[0];
+    if (!validateOpSig(genesis)) {
+      throw new Error('Protocol Violation: operation signature is invalid');
+    }
+    return await setEntityState(id, {
+      id: id,
+      src: entity,
+      doc: mergeDiff({}, genesis.delta),      
+      recovery: genesis.recovery || []
     });
   }
 }
 
-  async function processLeaf(rootHash, leafHash) {
-    var entity = await getLeafData(leafHash);
-    if (!entity || !Array.isArray(entity) || !entity.length) {
-      throw new Error('Protocol Violation: entity is malformed');
+async function processUpdate(entity, leafHash, rootHash){
+  if (!validateOpProof(update)) return false;
+  var id = update[1].proof.id;
+  var state = await getEntityState(id);
+  var forkIndex;
+  var forked = state.src.some((op, i) => {
+    if (op.proof.leafHash !== generateOpHash(update[i])) {
+      forkIndex = i;
+      return true;
     }
-    if (entity.length === 1) {
-      return await processGenesisOp(rootHash, leafHash, entity);
-    }
-    else {
-      return await processUpdate(entity);
-    }
-  }
-
-  async function processGenesisOp (rootHash, leafHash, entity){
-    var id = rootHash + '-' + leafHash;
-    var state = await getEntityState(id);
-    if (state === null) {
-      var genesis = entity[0];
-      if (!await validateOpSig(genesis)) {
-        throw new Error('Protocol Violation: operation signature is invalid');
-      }
-      return await setEntityState(id, {
-        id: id,
-        src: entity,
-        doc: mergeDiff({}, genesis.delta),      
-        recovery: genesis.recovery || []
-      });
+  });
+  if (forked){
+    if (await validateFork(state, update)) {
+      return await updateState(state, update, forkIndex);
     }
   }
-
-  async function processUpdate (update){
-    var id = update[1].proof.id;
-    var state = await getEntityState(id);
-    var forkIndex;
-    var forked = state.src.some((op, i) => {
-      if (op.proof.leafHash !== generateOpHash(update[i])) {
-        forkIndex = i;
-        return true;
-      }
-    });
-    if (forked){
-      if (await validateFork(state, update)) {
-        return await updateState(state, update, forkIndex);
-      }
-    }
-    else if (update.length > state.src.length) {
-      return await updateState(state, update, update.length);
-    }
-    else throw new Error('Protocol Violation: update discarded, duplicate detected');
+  else if (update.length > state.src.length) {
+    return await updateState(state, update, update.length);
   }
+  else throw new Error('Protocol Violation: update discarded, duplicate detected');
+}
 ```
 
 # Open Questions
@@ -271,7 +270,7 @@ Given the protocol was designed to enable unique Entity rooting and DPKI operati
 
 What does DDoS mean in this context? Because Entity IDs and subsequent operations in the system are represented via embedded tree structures where the trees can be arbitrarily large, it is possible for protocol adherent nodes to create and broadcast transactions to the underlying blockchain that embed massive sidetrees composed of leaves that are not intended for any other purpose than to force other observing nodes to process their Entity operations in accordance with the protocol.
 
-The critical questions are: can observing nodes 'outrun' bad actors who may seek to clog the system with transactions bearing spurious sidetrees meant to degraded system-wide performance? Can an attacker generate spurious trees of Entity ops faster than observing nodes can fetch those tree/leaf/source data and process the operations? Without actually running a simulation yet, it's important to consider what mitigations can be put in place to assure that, assuming an issue exists, it can be overcome.
+The critical questions are: can observing nodes 'outrun' bad actors who may seek to clog the system with transactions bearing spurious Sidetrees meant to degraded system-wide performance? Can an attacker generate spurious Sidetrees of Entity ops faster than observing nodes can fetch the Sidetree data and process the operations? Without actually running a simulation yet, it's important to consider what mitigations can be put in place to assure that, assuming an issue exists, it can be overcome.
 
 At a certain point, the attacker would be required to overwhelm the underlying chain itself, which has its own in-built organic price-defense, but it's possible that the Layer 2 nodes can be overcome before that begins to impact the attacker.
 
@@ -283,9 +282,9 @@ A very basic idea is to simply limit the depth of a protocol-adherent sidetree. 
 
 > NOTE: large block expansion of the underlying chain generally creates a Tragedy of the Commons spam condition on the chain itself, which negatively impacts this entire class of DDoS protection for all L2 systems. Large block expansion may exclude networks from being a viable substrate for Sidetree Entities, if this mitigation strategy was selected for use.
 
-##### Root-level Proof-of-Work
+##### Transaction & Leaf-level Proof-of-Work
 
-Add a requirement to the protocol that each transaction's Merkle Root be required to show a specified or algorithmically computed level of proof-of-work for nodes to recognize the Sidetree as a valid submission.
+Another strategy could be enforcing a protocol requirement that hashes in each transaction and/or leaves be required to show a protocol-specified or algorithmically established proof-of-work for nodes to recognize the Sidetree as a valid submission.
 
-By requiring the root hash submitted for a Sidetree transaction have N level of leading 0s, it may be possible to degrade the ability of bad actors to effectively spam the system with useless Sidetrees that contain a massive numbers of ops. The user-level outcome would be that someone using the system to do an update of their human identity's DID would hash the update object with an included nonce on their local device until it satisfied the requisite work requirement, then have it included in a Sidetree. Nodes would discard any Sidetrees that do not meet the require work level.
+By requiring these elements in a Sidetree transaction to have N level of leading 0s, it may be possible to degrade the ability of bad actors to effectively spam the system with useless Sidetrees that contain a massive numbers of ops. The user-level outcome would be that someone using the system to do an update of their human identity's DID would hash the update object with an included nonce on their local device until it satisfied the requisite work requirement, then have it included in a Sidetree. Nodes would discard any Sidetrees that do not meet the require work level.
 
